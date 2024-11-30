@@ -1,0 +1,225 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Template.Api</name>
+    </assembly>
+    <members>
+        <member name="M:Template.Api.Controllers.Core.V1.Clients.ClientController.CreateClientAsync(Template.Application.Common.Behaviours.IHandlerBase{Template.Application.Domains.Core.V1.Clients.Commands.CreateClient.CreateClientCommand,Template.Application.Domains.Core.V1.ViewModels.ClientVM},Template.Application.Domains.Core.V1.Clients.Commands.CreateClient.CreateClientCommand,System.Threading.CancellationToken)">
+            <summary>
+            Responsável por Registrar um novo cliente.
+            </summary>
+            <param name="handler"></param>
+            <param name="command"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Template.Api.Controllers.Core.V1.Clients.ClientController.UpdateClientAsync(Template.Application.Common.Behaviours.IHandlerBase{Template.Application.Domains.Core.V1.Clients.Commands.UpdateClient.UpdateClientCommand,Template.Application.Domains.Core.V1.ViewModels.ClientVM},Template.Application.Domains.Core.V1.Clients.Commands.UpdateClient.UpdateClientCommand,System.Threading.CancellationToken)">
+            <summary>
+            Responsável por Editar um cliente.
+            </summary>
+            <param name="handler"></param>
+            <param name="command"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Template.Api.Controllers.Core.V1.Clients.ClientController.GetAllAsync(Template.Application.Common.Behaviours.IHandlerBase{Template.Application.Domains.Core.V1.Clients.Queries.GetAll.GetAllQuery,System.Collections.Generic.IEnumerable{Template.Application.Domains.Core.V1.ViewModels.ClientVM}},Template.Application.Domains.Core.V1.Clients.Queries.GetAll.GetAllQuery,System.Threading.CancellationToken)">
+            <summary>
+            Responsável por listar todos os clientes.
+            </summary>
+            <param name="handler"></param>
+            <param name="query"></param>
+            <param name="cancellationToken"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Template.Api.Controllers.Core.V1.Clients.ClientController.DeactivateClientAsync(Template.Application.Common.Behaviours.IHandlerBase{Template.Application.Domains.Core.V1.Clients.Commands.DeactivateClient.DeactivateClientCommand,System.String},Template.Application.Domains.Core.V1.Clients.Commands.DeactivateClient.DeactivateClientCommand,System.Threading.CancellationToken)">
+            <summary>
+            Responsável por desativar um cliente.
+            </summary>
+            <param name="handler"></param>
+            <param name="command"></param>
+            <param name="cancellationToken"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Template.Api.Controllers.Core.V1.Clients.ClientController.DeleteClientAsync(Template.Application.Common.Behaviours.IHandlerBase{System.Guid,System.String},System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Responsável por excluir um cliente fisicamente.
+            </summary>
+            <param name="handler"></param>
+            <param name="clientId"></param>
+            <param name="cancellationToken"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Template.Api.Controllers.System.HealthController.HealthCheck">
+            <summary>
+            Endpoint de verificação de integridade.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:Template.Api.Controllers.Tenant.V1.Clients.ClientController.CreateClientAsync(Template.Application.Common.Behaviours.IHandlerBase{Template.Application.Domains.Tenant.V1.Clients.Commands.CreateClient.CreateClientCommand,Template.Application.Domains.Tenant.V1.ViewModels.ClientVM},Template.Application.Domains.Tenant.V1.Clients.Commands.CreateClient.CreateClientCommand,System.Threading.CancellationToken)">
+            <summary>
+            Responsável por Registrar um novo cliente.
+            </summary>
+            <param name="handler"></param>
+            <param name="command"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Template.Api.Controllers.Tenant.V1.Clients.ClientController.UpdateClientAsync(Template.Application.Common.Behaviours.IHandlerBase{Template.Application.Domains.Tenant.V1.Clients.Commands.UpdateClient.UpdateClientCommand,Template.Application.Domains.Tenant.V1.ViewModels.ClientVM},Template.Application.Domains.Tenant.V1.Clients.Commands.UpdateClient.UpdateClientCommand,System.Threading.CancellationToken)">
+            <summary>
+            Responsável por Editar um cliente.
+            </summary>
+            <param name="handler"></param>
+            <param name="command"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Template.Api.Controllers.Tenant.V1.Clients.ClientController.GetAllAsync(Template.Application.Common.Behaviours.IHandlerBase{Template.Application.Domains.Tenant.V1.Clients.Queries.GetAll.GetAllQuery,System.Collections.Generic.IEnumerable{Template.Application.Domains.Tenant.V1.ViewModels.ClientVM}},Template.Application.Domains.Tenant.V1.Clients.Queries.GetAll.GetAllQuery,System.Threading.CancellationToken)">
+            <summary>
+            Responsável por listar todos os clientes.
+            </summary>
+            <param name="handler"></param>
+            <param name="query"></param>
+            <param name="cancellationToken"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Template.Api.Controllers.Tenant.V1.Clients.ClientController.DeactivateClientAsync(Template.Application.Common.Behaviours.IHandlerBase{Template.Application.Domains.Tenant.V1.Clients.Commands.DeactivateClient.DeactivateClientCommand,System.String},Template.Application.Domains.Tenant.V1.Clients.Commands.DeactivateClient.DeactivateClientCommand,System.Threading.CancellationToken)">
+            <summary>
+            Responsável por desativar um cliente.
+            </summary>
+            <param name="handler"></param>
+            <param name="command"></param>
+            <param name="cancellationToken"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Template.Api.Controllers.Tenant.V1.Clients.ClientController.DeleteClientAsync(Template.Application.Common.Behaviours.IHandlerBase{System.Guid,System.String},System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Responsável por excluir um cliente fisicamente.
+            </summary>
+            <param name="handler"></param>
+            <param name="clientId"></param>
+            <param name="cancellationToken"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Template.Api.Controllers.V1.ExternalServices.Files.FileController.UploadFileAsync(Template.Application.Common.Interfaces.Services.IStorage,Template.Application.Domains.V1.ExternalServices.Storage.Commands.Upload.FileUploadCommand,System.Threading.CancellationToken)">
+            <summary>
+            Responsável por Subir arquivo no Azure Storage.
+            </summary>
+            <param name="storage"></param>
+            <param name="file"></param>
+            <param name="cancellationToken"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Template.Api.Controllers.V1.ExternalServices.Files.FileController.GetFileAsync(Template.Application.Common.Interfaces.Services.IStorage,Template.Application.Domains.V1.ExternalServices.Storage.Queries.DownloadFile.DownloadFileQuery)">
+            <summary>
+            Responsável por baixar um arquivo no Azure Storage.
+            </summary>
+            <param name="storage"></param>
+            <param name="file"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Template.Api.Controllers.V1.ExternalServices.Files.FileController.DeleteFileAsync(Template.Application.Common.Interfaces.Services.IStorage,Template.Application.Domains.V1.ExternalServices.Storage.Commands.Delete.FileDeleteCommand)">
+            <summary>
+            Responsável por Deletar arquivo no Azure Storage.
+            </summary>
+            <param name="storage"></param>
+            <param name="file"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Template.Api.Controllers.V1.ExternalServices.Google.GoogleController.GetGoogleCalendarEventsAsync(Template.Application.Common.Behaviours.IHandlerBase{Template.Application.Domains.V1.ExternalServices.Google.Queries.CalendarEvents.GetCalendarEventsQuery,System.Collections.Generic.List{Template.Application.Common.Models.GoogleCalendarEvent}},System.Threading.CancellationToken)">
+            <summary>
+            Obtém os eventos do Google Calendar do usuário logado.
+            </summary>
+            <param name="handler">Handler responsável por executar a lógica de busca dos eventos do Google Calendar.</param>
+            <param name="cancellationToken">Token para cancelar a operação, caso necessário.</param>
+            <returns>
+            Retorna uma resposta contendo a lista de eventos do Google Calendar ou erros, caso ocorram.
+            </returns>
+        </member>
+        <member name="T:Template.Api.Controllers.V1.Identity.Auth.AuthController">
+            <summary>
+            Controller responsável pelas operações de autenticação, incluindo login no sistema e integração com provedores externos.
+            </summary>
+        </member>
+        <member name="M:Template.Api.Controllers.V1.Identity.Auth.AuthController.LoginAsync(Template.Application.Common.Behaviours.IHandlerBase{Template.Application.Domains.V1.Identity.Auth.Commands.LoginUser.LoginUserCommand,Template.Application.Domains.V1.ViewModels.Users.LoginUserVm},Template.Application.Domains.V1.Identity.Auth.Commands.LoginUser.LoginUserCommand,System.Threading.CancellationToken)">
+            <summary>
+            Realiza o login no sistema utilizando as credenciais fornecidas pelo usuário.
+            </summary>
+            <param name="handler">Handler para processar a execução do comando de login.</param>
+            <param name="command">Comando contendo as credenciais de login do usuário.</param>
+            <param name="cancellationToken">Token para controle de cancelamento da operação.</param>
+            <returns>Resposta indicando sucesso ou falha na autenticação, incluindo o token em caso de sucesso.</returns>
+        </member>
+        <member name="M:Template.Api.Controllers.V1.Identity.Auth.AuthController.GoogleCallback(Template.Application.Common.Interfaces.Services.IGoogle,Template.Application.Common.Interfaces.Security.IIdentityService,System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Processa o retorno do Google OAuth 2.0 após a autenticação, gerando um token para o usuário no sistema.
+            </summary>
+            <param name="google">Serviço de autenticação Google responsável pelo processamento do login externo.</param>
+            <param name="service">Serviço de identidade para manipulação de usuários e integrações.</param>
+            <param name="code">Código de autorização recebido do Google após o login.</param>
+            <param name="state">Estado retornado pela autenticação do Google.</param>
+            <param name="cancellationToken">Token para controle de cancelamento da operação.</param>
+            <returns>Resposta contendo sucesso ou falha no processo de autenticação, com os detalhes necessários.</returns>
+        </member>
+        <member name="M:Template.Api.Controllers.V1.Identity.Auth.AuthController.GoogleLogin(Template.Application.Common.Interfaces.Services.IGoogle,System.Threading.CancellationToken)">
+            <summary>
+            Gera o link de login para iniciar o processo de autenticação no Google.
+            </summary>
+            <param name="google">Serviço de autenticação Google responsável por gerar o URL de autenticação.</param>
+            <param name="cancellationToken">Token para controle de cancelamento da operação.</param>
+            <returns>Resposta contendo a URL gerada para o login no Google.</returns>
+        </member>
+        <member name="M:Template.Api.Controllers.V1.Identity.Auth.AuthController.ResolveTenantId(System.String)">
+            <summary>
+            Determina o Tenant ID a partir do parâmetro 'state' ou do header 'X-Tenant-ID'.
+            </summary>
+            <param name="state">Parâmetro de estado opcional contendo o Tenant ID.</param>
+            <returns>O Tenant ID como um Guid ou Guid.Empty se não encontrado.</returns>
+        </member>
+        <member name="M:Template.Api.Controllers.V1.Identity.Users.UsersController.CreateUserAsync(Template.Application.Common.Behaviours.IHandlerBase{Template.Application.Domains.V1.Identity.Users.Commands.CreateUsers.CreateUserCommand,Template.Application.Common.Models.User},Template.Application.Domains.V1.Identity.Users.Commands.CreateUsers.CreateUserCommand,System.Threading.CancellationToken)">
+            <summary>
+            Responsável por criar novos usuários no sistema.
+            </summary>
+            <param name="handler"></param>
+            <param name="command">Forneça as informações para criar o usuário.</param>
+            <returns></returns>
+        </member>
+        <member name="M:Template.Api.Controllers.V1.Identity.Users.UsersController.PolicesAsync(Template.Application.Common.Behaviours.IHandlerBase{Template.Application.Domains.V1.Identity.Users.Queries.GetPolices.GetPolicesQuery,System.Collections.Generic.IEnumerable{Template.Application.ViewModels.Shared.KeyValuePairVM}},System.Threading.CancellationToken)">
+            <summary>
+            Obtém a lista completa de políticas de acesso do sistema para exibição e configuração de permissões.
+            </summary>
+            <param name="handler">Handler que executa a consulta para obter as políticas.</param>
+            <param name="cancellationToken">Token de cancelamento para interromper a operação, se necessário.</param>
+            <returns>Retorna uma lista de objetos KeyValuePairVM, contendo as políticas de acesso.</returns>
+        </member>
+        <member name="M:Template.Api.Controllers.V1.Identity.Users.UsersController.RolesAsync(Template.Application.Common.Behaviours.IHandlerBase{Template.Application.Domains.V1.Identity.Users.Queries.GetRoles.GetRolesQuery,System.Collections.Generic.IEnumerable{Template.Application.ViewModels.Shared.KeyValuePairVM}},System.Threading.CancellationToken)">
+            <summary>
+            Obtém a lista completa de funções disponíveis no sistema para definição de permissões e acesso.
+            </summary>
+            <param name="handler">Handler que executa a consulta para obter as roles.</param>
+            <param name="cancellationToken">Token de cancelamento para interromper a operação, se necessário.</param>
+            <returns>Retorna uma lista de objetos KeyValuePairVM, contendo as funções disponíveis no sistema.</returns>
+        </member>
+        <member name="M:Template.Api.Controllers.V1.Identity.Users.UsersController.EditUserAsync(Template.Application.Common.Behaviours.IHandlerBase{Template.Application.Domains.V1.Identity.Users.Commands.EditUsers.EditUserCommand,Template.Application.Common.Models.User},Template.Application.Domains.V1.Identity.Users.Commands.EditUsers.EditUserCommand,System.Threading.CancellationToken)">
+            <summary>
+            Responsável por editar usuário no sistema.
+            </summary>
+            <param name="handler"></param>
+            <param name="command">Forneça as informações para editar o usuário.</param>
+            <returns></returns>
+        </member>
+        <member name="M:Template.Api.Controllers.V1.Identity.Users.UsersController.UsuariosAsync(Template.Application.Common.Behaviours.IHandlerBase{Template.Application.Domains.V1.Identity.Users.Queries.GetAll.GetAllQuery,System.Collections.Generic.IEnumerable{Template.Application.Domains.V1.ViewModels.Users.UserVm}},Template.Application.Domains.V1.Identity.Users.Queries.GetAll.GetAllQuery,System.Threading.CancellationToken)">
+            <summary>
+            Responsável por listar usuários paginados, ordenados e filtrados por email, CPF ou nome.
+            </summary>
+            <param name="handler"></param>
+            <param name="query">O objeto de consulta contendo os parâmetros de paginação, ordenação e filtro.</param>
+            <param name="cancellationToken"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Template.Api.Controllers.V1.Identity.Users.UsersController.DeleteUserAsync(Template.Application.Common.Behaviours.IHandlerBase{System.Guid,System.String},System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Responsável por deletar usuário pelo Id.
+            </summary>
+            <param name="handler"></param>
+            <param name="userId"></param>
+            <param name="cancellationToken"></param>
+            <returns></returns>
+        </member>
+    </members>
+</doc>
