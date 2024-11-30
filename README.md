@@ -9,6 +9,19 @@ Este projeto é uma evolução do template original, adaptado para suportar **mu
 
 Fornecer uma base para sistemas SaaS multitenancy que necessitam gerenciar múltiplos clientes com isolações robustas, alto desempenho e escalabilidade.
 
+## Principais Funcionalidades
+- **Gerenciamento de clientes (tenants)**: Cada tenant possui seus próprios dados, com configuração automática de conexões.
+- **Multitenancy avançado**: Ideal para sistemas SaaS que precisam escalar e oferecer isolamento de dados entre clientes.
+- **Organização modular**: Estrutura bem definida em camadas (Domain, Application, Infra e API) para facilitar manutenção e extensibilidade.
+- **Integrações robustas**: Inclui suporte para serviços externos, autenticação segura e armazenamento na nuvem.
+- **Controle direto sobre fluxos críticos**: Mantendo a clareza e a objetividade, evitamos o uso de ferramentas como Mediator e AutoMapper, garantindo maior controle sobre a lógica da aplicação.
+
+## Por que multitenancy?
+Esta abordagem é perfeita para soluções SaaS, onde diferentes organizações ou clientes compartilham a mesma aplicação, mas cada um com seu próprio banco de dados. Isso oferece:
+- **Escalabilidade**: Atenda a milhares de clientes isoladamente.
+- **Segurança**: Dados completamente separados entre tenants.
+- **Flexibilidade**: Fácil configuração e gestão para novos clientes.
+
 ## Arquitetura
 
 Este projeto adota os seguintes princípios e padrões arquiteturais:
