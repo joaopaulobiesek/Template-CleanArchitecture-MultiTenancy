@@ -7,7 +7,7 @@ using static Template.Domain.Constants.Policies;
 
 namespace Template.Application.Domains.V1.Identity.Users.Queries.GetPolices;
 
-[Authorize(Roles = Roles.Admin)]
+[Authorize(Roles = $"{Roles.Admin},{Roles.TI}")]
 [Authorize(Policy = $"{CanList},{CanView},{CanManageSettings},{CanManageUsers},{CanAssignPolicies}", PolicyRequirementType = RequirementType.All)]
 public class GetPolicesQuery
 {

@@ -8,15 +8,11 @@ using static Template.Domain.Constants.Policies;
 
 namespace Template.Application.Domains.V1.Identity.Users.Queries.GetAll;
 
-[Authorize(Roles = Roles.Admin)]
+[Authorize(Roles = $"{Roles.Admin},{Roles.TI}")]
 [Authorize(Policy = $"{CanList},{CanView},{CanManageSettings},{CanManageUsers}", PolicyRequirementType = RequirementType.All)]
-public class GetAllQuery
+[Auditable("Acesso Ã  listagem de usuÃ¡rios do sistema")]
+public class GetAllQuery : BasePaginatedQuery
 {
-    public int PageNumber { get; set; }
-    public int PageSize { get; set; }
-    public int AscDesc { get; set; }
-    public string? ColumnName { get; set; }
-    public string? SearchText { get; set; }
 }
 
 public class GetAllQueryHandler : HandlerBase<GetAllQuery, IEnumerable<UserVm>>
@@ -30,15 +26,16 @@ public class GetAllQueryHandler : HandlerBase<GetAllQuery, IEnumerable<UserVm>>
 
     protected override async Task<ApiResponse<IEnumerable<UserVm>>> RunCore(GetAllQuery request, CancellationToken cancellationToken, object? additionalData)
     {
+        var customFilterDict = request.GetCustomFilterDictionary();
+
+        var query = _identity.ListUsersAsync(request.AscDesc, request.ColumnName!, request.Src, customFilterDict);
+
         var list = await PaginatedList<UserVm>.CreateAsync(
-            _identity.ListUsersAsync(request.AscDesc, request.ColumnName!, request.SearchText)!,
+            query,
             request.PageNumber,
             request.PageSize,
             cancellationToken
         );
-
-        if (list.Data == null || !list.Data.Any())
-            return new SuccessResponse<IEnumerable<UserVm>>("Consulta concluída com sucesso, porém nenhum registro foi encontrado.", null);
 
         foreach (var user in list.Data)
         {

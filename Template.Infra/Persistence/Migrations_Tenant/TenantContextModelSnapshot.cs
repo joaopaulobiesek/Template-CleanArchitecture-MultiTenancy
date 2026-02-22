@@ -22,14 +22,24 @@ namespace Template.Infra.Persistence.Migrations_Tenant
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("Template.Domain.Entity.Tenant.Client", b =>
+            modelBuilder.Entity("Template.Domain.Entity.Tenant.Audit.AuditLog", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
                     b.Property<bool>("Active")
                         .HasColumnType("bit");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -37,38 +47,99 @@ namespace Template.Infra.Persistence.Migrations_Tenant
                     b.Property<DateTime?>("DeleteAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("DocumentNumber")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                    b.Property<long>("DurationMs")
+                        .HasColumnType("bigint");
 
-                    b.Property<string>("Email")
-                        .HasMaxLength(254)
-                        .HasColumnType("nvarchar(254)");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
+                    b.Property<string>("EncryptionKeyId")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<bool>("Paid")
+                    b.Property<string>("Endpoint")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("ExecutedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("HttpMethod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("nvarchar(45)");
+
+                    b.Property<string>("RequestBodyEncrypted")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Success")
                         .HasColumnType("bit");
 
-                    b.Property<string>("Phone")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("ZipCode")
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("UserEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("UserId")
                         .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Client", "dbo");
+                    b.HasIndex("Action")
+                        .HasDatabaseName("IX_AuditLog_Action");
+
+                    b.HasIndex("Active")
+                        .HasDatabaseName("IX_AuditLog_Active");
+
+                    b.HasIndex("Category")
+                        .HasDatabaseName("IX_AuditLog_Category");
+
+                    b.HasIndex("ExecutedAt")
+                        .HasDatabaseName("IX_AuditLog_ExecutedAt");
+
+                    b.HasIndex("Success")
+                        .HasDatabaseName("IX_AuditLog_Success");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("IX_AuditLog_TenantId");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_AuditLog_UserId");
+
+                    b.HasIndex("Active", "ExecutedAt")
+                        .HasDatabaseName("IX_AuditLog_Active_ExecutedAt");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("Active", "ExecutedAt"), new[] { "UserId", "UserName", "DurationMs", "Success", "Action", "Category" });
+
+                    b.HasIndex("TenantId", "ExecutedAt")
+                        .HasDatabaseName("IX_AuditLog_TenantId_ExecutedAt");
+
+                    b.HasIndex("UserId", "ExecutedAt")
+                        .HasDatabaseName("IX_AuditLog_UserId_ExecutedAt");
+
+                    b.ToTable("AuditLog", "dbo");
                 });
 
             modelBuilder.Entity("Template.Infra.Identity.ContextRole", b =>
@@ -130,6 +201,9 @@ namespace Template.Infra.Persistence.Migrations_Tenant
 
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
+
+                    b.Property<bool>("BypassIp")
+                        .HasColumnType("bit");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()

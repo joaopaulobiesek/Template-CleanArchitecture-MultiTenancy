@@ -1,7 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Template.Application.Common.Interfaces.Services;
 using Template.Infra.Persistence.Contexts;
-using Template.Infra.Persistence.Contexts.Core;
+using Template.Infra.Persistence.Contexts.Tenant;
 using Template.Infra.Settings.Configurations;
 
 namespace Template.Infra.Identity;
@@ -9,17 +10,22 @@ namespace Template.Infra.Identity;
 public class CustomInitializerIdentity
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly IConfiguration _config;
+    private readonly ITenantCacheService _tenantCacheService;
 
-    public CustomInitializerIdentity(IServiceProvider serviceProvider)
+    public CustomInitializerIdentity(IServiceProvider serviceProvider, IConfiguration config, ITenantCacheService tenantCacheService)
     {
         _serviceProvider = serviceProvider;
+        _config = config;
+        _tenantCacheService = tenantCacheService;
     }
 
     public UserManager<ContextUser> GetUserManagerForTenant(Guid tenantId)
     {
-        var connectionString = GetTenantConnectionConfiguration.GetTenantConnectionString(tenantId);
+        var connectionString = _tenantCacheService.GetConnectionStringAsync(tenantId).GetAwaiter().GetResult()
+            ?? GetTenantConnectionConfiguration.GetTenantConnectionString(tenantId, _config);
 
-        var userStore = new UserStore<ContextUser, ContextRole, BaseContext, string, ContextUserClaim, ContextUserRole, ContextUserLogin, ContextUserToken,ContextRoleClaim>(CreateCoreContext(connectionString));
+        var userStore = new UserStore<ContextUser, ContextRole, BaseContext, string, ContextUserClaim, ContextUserRole, ContextUserLogin, ContextUserToken, ContextRoleClaim>(CreateTenantContext(connectionString));
 
         return new UserManager<ContextUser>(
             userStore,
@@ -36,9 +42,10 @@ public class CustomInitializerIdentity
 
     public RoleManager<ContextRole> GetRoleManagerForTenant(Guid tenantId)
     {
-        var connectionString = GetTenantConnectionConfiguration.GetTenantConnectionString(tenantId);
+        var connectionString = _tenantCacheService.GetConnectionStringAsync(tenantId).GetAwaiter().GetResult()
+            ?? GetTenantConnectionConfiguration.GetTenantConnectionString(tenantId, _config);
 
-        var roleStore = new RoleStore<ContextRole, CoreContext, string, ContextUserRole, ContextRoleClaim>(CreateCoreContext(connectionString));
+        var roleStore = new RoleStore<ContextRole, TenantContext, string, ContextUserRole, ContextRoleClaim>(CreateTenantContext(connectionString));
 
         return new RoleManager<ContextRole>(
             roleStore,
@@ -49,11 +56,11 @@ public class CustomInitializerIdentity
         );
     }
 
-    private CoreContext CreateCoreContext(string connectionString)
+    private TenantContext CreateTenantContext(string connectionString)
     {
-        var optionsBuilder = new DbContextOptionsBuilder<CoreContext>();
+        var optionsBuilder = new DbContextOptionsBuilder<TenantContext>();
         optionsBuilder.UseSqlServer(connectionString);
 
-        return new CoreContext(optionsBuilder.Options);
+        return new TenantContext(optionsBuilder.Options);
     }
 }

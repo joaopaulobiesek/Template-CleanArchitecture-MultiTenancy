@@ -13,6 +13,9 @@ public class CoreContext : BaseContext, ICoreContext
     }
 
     public DbSet<Client> Clients { get; set; }
+    public DbSet<ClientModule> ClientModules { get; set; }
+    public DbSet<LgpdTerm> LgpdTerms { get; set; }
+    public DbSet<DemoRequest> DemoRequests { get; set; }
     public new DbSet<T> Set<T>() where T : class => base.Set<T>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -1,13 +1,9 @@
-﻿using DocumentFormat.OpenXml.Spreadsheet;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
+using Template.Application.Common.Extensions;
 using Template.Application.Common.Interfaces.Security;
 using Template.Application.Common.Models;
 using Template.Application.Domains.V1.ViewModels.Users;
 using Template.Domain.Constants;
-using Template.Infra.Persistence.Contexts.Tenant;
 
 namespace Template.Infra.Identity;
 
@@ -24,19 +20,75 @@ public class IdentityService : IIdentityService
         _tokenService = tokenService;
     }
 
-    public async Task<(string, string, string)> LoginAsync(string emailUserName, string password, Guid xTenantID)
+    public async Task<LoginTokenResult?> LoginAsync(string emailUserName, string password, Guid xTenantID)
     {
         var user = await SearchUserAsync(emailUserName);
 
         if (user is null)
-            return (string.Empty, string.Empty, string.Empty);
+            return null;
 
         var checkPassword = await _userManager.CheckPasswordAsync(user, password);
 
         if (!checkPassword)
-            return (string.Empty, string.Empty, string.Empty);
+            return null;
 
-        return (user.FullName, user.Email, await GenerateTokensAndUpdateUserAsync(user, xTenantID))!;
+        // Verifica se o email foi confirmado - Retorna resultado especial para o handler diferenciar
+        if (!user.EmailConfirmed)
+        {
+            return new LoginTokenResult
+            {
+                UserId = user.Id,
+                Email = user.Email ?? string.Empty,
+                FullName = user.FullName ?? string.Empty,
+                AccessToken = "EMAIL_NOT_CONFIRMED" // Marcador especial
+            };
+        }
+
+        // Passa apenas o userId para o TokenService buscar o user com seu proprio DbContext
+        var tokenPair = await _tokenService.GenerateTokenPairAsync(user.Id, xTenantID);
+
+        return new LoginTokenResult(
+            user.Id,
+            user.FullName ?? string.Empty,
+            user.Email ?? string.Empty,
+            tokenPair.AccessToken,
+            tokenPair.RefreshToken,
+            tokenPair.AccessTokenExpires,
+            tokenPair.RefreshTokenExpires
+        );
+    }
+
+    public async Task<LoginTokenResult?> RefreshTokensAsync(string userId, string refreshToken, Guid xTenantID)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+
+        if (user is null)
+            return null;
+
+        var tokenPair = await _tokenService.RefreshTokensAsync(userId, refreshToken, xTenantID);
+
+        if (tokenPair is null)
+            return null;
+
+        return new LoginTokenResult(
+            user.Id,
+            user.FullName ?? string.Empty,
+            user.Email ?? string.Empty,
+            tokenPair.AccessToken,
+            tokenPair.RefreshToken,
+            tokenPair.AccessTokenExpires,
+            tokenPair.RefreshTokenExpires
+        );
+    }
+
+    public async Task RevokeRefreshTokenAsync(string userId)
+    {
+        await _tokenService.RevokeRefreshTokenAsync(userId);
+    }
+
+    public string? ExtractUserIdFromToken(string token)
+    {
+        return _tokenService.ExtractUserIdFromToken(token);
     }
 
     public async Task<string?> GetUserNameAsync(string userId)
@@ -46,17 +98,24 @@ public class IdentityService : IIdentityService
         return user?.UserName;
     }
 
-    public async Task<UserVm> CreateUserAsync(IUser user, string password)
+    public async Task<UserVm> CreateUserAsync(IUser user, string? password)
     {
         var newUser = new ContextUser
         {
             FullName = user.FullName,
             UserName = user.Email,
             Email = user.Email,
+            PhoneNumber = user.PhoneNumber,
             ProfileImageUrl = user.ProfileImageUrl,
+            BypassIp = user.BypassIp,
         };
 
-        var result = await _userManager.CreateAsync(newUser, password);
+        var result = new IdentityResult();
+
+        if (string.IsNullOrEmpty(password))
+            result = await _userManager.CreateAsync(newUser);
+        else
+            result = await _userManager.CreateAsync(newUser, password);
 
         if (!result.Succeeded)
             return new UserVm();
@@ -204,7 +263,7 @@ public class IdentityService : IIdentityService
         return result.ToApplicationResult();
     }
 
-    public IQueryable<UserVm>? ListUsersAsync(int order, string param, string? searchText = null)
+    public IQueryable<UserVm>? ListUsersAsync(int order, string param, string? searchText = null, Dictionary<string, string>? customFilter = null)
     {
         IQueryable<ContextUser> userQuery = _userManager.Users.AsQueryable();
 
@@ -216,12 +275,44 @@ public class IdentityService : IIdentityService
             );
         }
 
+        // Aplica custom filters COM WHITELIST na entidade ContextUser (ANTES do Select!)
+        if (customFilter != null && customFilter.Any())
+        {
+            var filteredQuery = userQuery.ApplyCustomFiltersWithWhitelist(
+                customFilter,
+                "Email",
+                "PhoneNumber"
+            );
+
+            if (filteredQuery != null)
+                userQuery = filteredQuery;
+        }
+
         if (order == -1)
             userQuery = userQuery.OrderByDescending(SearchOrderProperty(param!));
         else
             userQuery = userQuery.OrderBy(SearchOrderProperty(param!));
 
-        return userQuery.Select(u => new UserVm(u.Id, u.Email, u.FullName, u.ProfileImageUrl, null, null));
+        var vmQuery = userQuery.Select(u => new UserVm(u.Id, u.Email, u.FullName, u.ProfileImageUrl, null, null, u.BypassIp));
+
+        return vmQuery;
+    }
+
+    public async Task<UserVm?> GetUserByIdAsync(string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+
+        if (user is null) return null;
+
+        return new UserVm
+        {
+            Id = user.Id,
+            FullName = user.FullName,
+            Email = user.Email,
+            PhoneNumber = user.PhoneNumber,
+            ProfileImageUrl = user.ProfileImageUrl,
+            BypassIp = user.BypassIp
+        };
     }
 
     public async Task<List<string>> GetUserRole(string userId)
@@ -252,30 +343,44 @@ public class IdentityService : IIdentityService
             .ToList();
     }
 
-    public async Task<ApiResponse<string>> HandleExternalLoginAsync(string provider, string providerKey, string email, string name, string? picture, Guid xTenantID)
+    public async Task<ApiResponse<LoginGoogleResponse>> HandleExternalLoginAsync(string provider, string providerKey, string email, string name, string? phoneNumber, string? picture, string? state)
     {
+        Guid xTenantID = Guid.Empty;
+        if (!string.IsNullOrEmpty(state) && Guid.TryParse(state, out var parsedGuid))
+        {
+            xTenantID = parsedGuid;
+        }
+
         var user = await _userManager.FindByLoginAsync(provider, providerKey);
         if (user != null)
-            return new SuccessResponse<string>("Login with external provider succeeded.", await GenerateTokensAndUpdateUserAsync(user!, xTenantID));
+        {
+            var responseResult = new LoginGoogleResponse
+            {
+                UserId = user.Id,
+                Token = await GenerateTokensAndUpdateUserAsync(user, xTenantID)
+            };
+            return new SuccessResponse<LoginGoogleResponse>("Login with external provider succeeded.", responseResult);
+        }
 
         user = await SearchUserAsync(email);
 
         if (user == null)
         {
             var roles = new List<string> { Roles.User };
-            var policies = new List<string> { Policies.CanList, Policies.CanView };
+            var policies = new List<string> { Policies.CanList, Policies.CanView, Policies.CanCreate, Policies.CanEdit, Policies.CanDelete, Policies.CanViewReports };
 
             user = new ContextUser
             {
                 UserName = email,
                 Email = email,
                 FullName = name,
+                PhoneNumber = phoneNumber,
                 ProfileImageUrl = picture,
             };
 
             var createResult = await _userManager.CreateAsync(user);
             if (!createResult.Succeeded)
-                return new ErrorResponse<string>(
+                return new ErrorResponse<LoginGoogleResponse>(
                     "Failed to create user.",
                     400,
                     null,
@@ -286,7 +391,7 @@ public class IdentityService : IIdentityService
 
             var createRolesResult = await _userManager.AddToRolesAsync(user!, roles);
             if (!createRolesResult.Succeeded)
-                return new ErrorResponse<string>(
+                return new ErrorResponse<LoginGoogleResponse>(
                     "Failed to assign roles to user.",
                     400,
                     null,
@@ -298,7 +403,7 @@ public class IdentityService : IIdentityService
             {
                 var addClaimsResult = await _userManager.AddClaimsAsync(user!, claims);
                 if (!addClaimsResult.Succeeded)
-                    return new ErrorResponse<string>(
+                    return new ErrorResponse<LoginGoogleResponse>(
                         "Failed to add claims to user.",
                         400,
                         null,
@@ -310,7 +415,7 @@ public class IdentityService : IIdentityService
         var addLoginResult = await _userManager.AddLoginAsync(user!, new UserLoginInfo(provider, providerKey, provider));
         if (!addLoginResult.Succeeded)
         {
-            return new ErrorResponse<string>(
+            return new ErrorResponse<LoginGoogleResponse>(
                 "Failed to associate external login with user.",
                 400,
                 null,
@@ -318,7 +423,13 @@ public class IdentityService : IIdentityService
             );
         }
 
-        return new SuccessResponse<string>("External login successfully associated with user.", await GenerateTokensAndUpdateUserAsync(user!, xTenantID));
+        var response = new LoginGoogleResponse
+        {
+            UserId = user!.Id,
+            Token = await GenerateTokensAndUpdateUserAsync(user, xTenantID)
+        };
+
+        return new SuccessResponse<LoginGoogleResponse>("External login successfully associated with user.", response);
     }
 
     public async Task<ApiResponse<string>> AddLoginProviderTokenAsync(string providerKey, string loginProvider, string tokenName, string tokenValue)
@@ -364,6 +475,16 @@ public class IdentityService : IIdentityService
         );
     }
 
+    public async Task<UserVm> SearchUserByEmailOrUserNameAsync(string emailUserName)
+    {
+        var user = await SearchUserAsync(emailUserName);
+
+        if (user == null)
+            return new UserVm();
+
+        return new UserVm(user.Id, user.Email);
+    }
+
     private async Task<ContextUser?> SearchUserAsync(string emailUserName) =>
         emailUserName.Contains('@')
             ? await _userManager.FindByEmailAsync(emailUserName)
@@ -383,4 +504,137 @@ public class IdentityService : IIdentityService
             "email" => user => user.Email!,
             _ => user => user.FullName
         };
+
+    public async Task<bool> AddUserToRoleAsync(string userId, string role)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return false;
+
+        var result = await _userManager.AddToRoleAsync(user, role);
+        return result.Succeeded;
+    }
+
+    public async Task<bool> RemoveUserFromRoleAsync(string userId, string role)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return false;
+
+        var result = await _userManager.RemoveFromRoleAsync(user, role);
+        return result.Succeeded;
+    }
+
+    // ============================================
+    // EMAIL CONFIRMATION METHODS
+    // ============================================
+
+    public async Task<bool> IsEmailConfirmedAsync(string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return false;
+
+        return user.EmailConfirmed;
+    }
+
+    public async Task<string?> GenerateEmailConfirmationTokenAsync(string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return null;
+
+        return await _userManager.GenerateEmailConfirmationTokenAsync(user);
+    }
+
+    public async Task<ApiResponse<string>> ConfirmEmailAsync(string userId, string token)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return new ErrorResponse<string>("Usuário não encontrado.", 404);
+
+        if (user.EmailConfirmed)
+            return new SuccessResponse<string>("E-mail já foi confirmado anteriormente.");
+
+        var result = await _userManager.ConfirmEmailAsync(user, token);
+        if (!result.Succeeded)
+        {
+            var errors = result.Errors.Select(e => new NotificationError("EmailConfirmation", e.Description)).ToList();
+            return new ErrorResponse<string>("Token de confirmação inválido ou expirado.", 400, null, errors);
+        }
+
+        return new SuccessResponse<string>("Email confirmado com sucesso!");
+    }
+
+    public async Task<UserVm?> GetUserByEmailAsync(string email)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null)
+            return null;
+
+        return new UserVm
+        {
+            Id = user.Id,
+            FullName = user.FullName,
+            Email = user.Email,
+            PhoneNumber = user.PhoneNumber,
+            ProfileImageUrl = user.ProfileImageUrl
+        };
+    }
+
+    // ============================================
+    // PASSWORD RESET METHODS
+    // ============================================
+
+    public async Task<string?> GeneratePasswordResetTokenAsync(string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return null;
+
+        return await _userManager.GeneratePasswordResetTokenAsync(user);
+    }
+
+    public async Task<ApiResponse<string>> ResetPasswordAsync(string userId, string token, string newPassword)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return new ErrorResponse<string>("Usuário não encontrado.", 404);
+
+        var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+        if (!result.Succeeded)
+        {
+            var errors = result.Errors.Select(e => new NotificationError("PasswordReset", e.Description)).ToList();
+            return new ErrorResponse<string>("Token de redefinição inválido ou expirado.", 400, null, errors);
+        }
+
+        return new SuccessResponse<string>("Senha redefinida com sucesso!");
+    }
+
+    // ============================================
+    // GET USERS BY ROLE
+    // ============================================
+
+    public async Task<List<UserVm>> GetUsersInRoleAsync(string roleName)
+    {
+        var users = await _userManager.GetUsersInRoleAsync(roleName);
+        return users.Select(u => new UserVm
+        {
+            Id = u.Id,
+            FullName = u.FullName,
+            Email = u.Email,
+            PhoneNumber = u.PhoneNumber,
+            ProfileImageUrl = u.ProfileImageUrl
+        }).ToList();
+    }
+
+    public Task<List<UserSimpleVM>> ListUsersSimpleAsync()
+    {
+        var users = _userManager.Users
+            .OrderBy(u => u.FullName)
+            .Select(u => new UserSimpleVM(u.Id, u.FullName, u.Email))
+            .ToList();
+
+        return Task.FromResult(users);
+    }
 }

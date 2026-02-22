@@ -1,6 +1,7 @@
 ﻿using Template.Application.Common.Behaviours;
 using Template.Application.Common.Interfaces.Security;
 using Template.Application.Common.Models;
+using Template.Domain.Constants;
 
 namespace Template.Application.Domains.V1.Identity.Users.Commands.CreateUsers;
 
@@ -15,6 +16,17 @@ public class CreateUserCommandHandler : HandlerBase<CreateUserCommand, User>
 
     protected override async Task<ApiResponse<User>> RunCore(CreateUserCommand request, CancellationToken cancellationToken, object? additionalData)
     {
+        // Validação: apenas Admin pode conceder role Admin
+        if (request.Roles != null && request.Roles.Any(r => r == Roles.Admin))
+        {
+            // Verifica se o usuário atual é Admin
+            var isCurrentUserAdmin = await _identity.IsInRoleAsync(_user.Id!, Roles.Admin);
+            if (!isCurrentUserAdmin)
+            {
+                return new ErrorResponse<User>("Apenas um Admin pode conceder a role Admin.", 403);
+            }
+        }
+
         var result = await _identity.CreateUserAsync(
             new User()
             {
@@ -22,7 +34,8 @@ public class CreateUserCommandHandler : HandlerBase<CreateUserCommand, User>
                 Email = request.Email,
                 Roles = request.Roles!,
                 Policies = request.Policies!,
-                ProfileImageUrl = request.ProfileImageUrl
+                ProfileImageUrl = request.ProfileImageUrl,
+                BypassIp = request.BypassIp
             },
             request.Password!
         );

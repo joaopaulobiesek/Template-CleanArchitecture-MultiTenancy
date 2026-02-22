@@ -1,5 +1,6 @@
+using Microsoft.AspNetCore.Http;
 using Template.Domain.Constants;
-using Template.Infra.Persistence.Contexts.Tenant;
+using Template.Infra.Persistence.Contexts.Core;
 using Template.Infra.Settings.Configurations;
 
 namespace Template.Infra.Persistence.Contexts;
@@ -10,7 +11,7 @@ public static class InitializerExtension
     {
         using var scope = webApplication.Services.CreateAsyncScope();
         var initializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
-        var context = scope.ServiceProvider.GetRequiredService<TenantContext>();
+        var context = scope.ServiceProvider.GetRequiredService<CoreContext>();
         await context.ApplyMigrations();
         await initializer.SeedAsync();
     }
@@ -20,15 +21,21 @@ public class DatabaseInitializer
 {
     private readonly UserManager<ContextUser> _userManager;
     private readonly RoleManager<ContextRole> _roleManager;
-    private IdentityConfiguration _config;
+    private readonly ITenantContext _tenantContext;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IdentityConfiguration _config;
 
     public DatabaseInitializer(
         UserManager<ContextUser> userManager,
         RoleManager<ContextRole> roleManager,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ITenantContext tenantContext,
+        IHttpContextAccessor httpContextAccessor)
     {
         _roleManager = roleManager;
         _userManager = userManager;
+        _tenantContext = tenantContext;
+        _httpContextAccessor = httpContextAccessor;
         _config = configuration
             .GetSection(IdentityConfiguration.IdentityKey)
             .Get<IdentityConfiguration>()!;

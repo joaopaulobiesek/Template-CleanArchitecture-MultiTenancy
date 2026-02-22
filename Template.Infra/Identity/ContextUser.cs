@@ -41,6 +41,7 @@ public class ContextUser : IdentityUser
 {
     public string? FullName { get; set; }
     public string? ProfileImageUrl { get; set; }
+    public bool BypassIp { get; set; }
 
     public ContextUser()
     {
@@ -58,12 +59,15 @@ public class ContextUser : IdentityUser
 
         if (ProfileImageUrl != u.ProfileImageUrl && !string.IsNullOrWhiteSpace(u.ProfileImageUrl))
             ProfileImageUrl = u.ProfileImageUrl;
+
+        BypassIp = u.BypassIp;
     }
 
     public static implicit operator ContextUser(User u)
     => new(fullName: u.FullName!)
     {
         Id = u.Id,
-        ProfileImageUrl = u.ProfileImageUrl
+        ProfileImageUrl = u.ProfileImageUrl,
+        BypassIp = u.BypassIp
     };
 }

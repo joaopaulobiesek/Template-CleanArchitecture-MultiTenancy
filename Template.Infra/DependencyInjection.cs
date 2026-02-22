@@ -1,14 +1,20 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.PlatformAbstractions;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using Template.Application.Common.Interfaces.Security;
+using Template.Application.Common.Interfaces.Services;
 using Template.Application.Common.Models;
 using Template.Domain.Constants;
+using Template.Infra.BackgroundJobs;
+using Template.Infra.ExternalServices.Audit;
+using Template.Infra.ExternalServices.AzureBlobStorage;
+using Template.Infra.ExternalServices.Cors;
 using Template.Infra.ExternalServices.Google;
 using Template.Infra.ExternalServices.SendEmails;
-using Template.Infra.ExternalServices.Storage;
+using Template.Infra.ExternalServices.TenantCache;
 using Template.Infra.Persistence;
 using Template.Infra.Persistence.Contexts;
 using Template.Infra.Persistence.Repositories;
@@ -28,6 +34,7 @@ public static class DependencyInjection
 
         services.AddScoped<IUser, User>();
         services.AddScoped<ICurrentUser, CurrentUser>();
+        services.AddScoped<IAuditService, AuditService>();
 
         services.AddHttpContextAccessor();
 
@@ -36,12 +43,32 @@ public static class DependencyInjection
         services.AddHttpClient();
 
         services.AddMemoryCache();
+        services.AddTenantCacheService();
+        services.AddSingleton<ICorsOriginService, CorsOriginService>();
         services.AddRepository();
         services.AdicionarSendGrid(config);
         services.AddGoogleAPI(config);
         services.AdicionarStorage(config);
+        services.AddHangfireJobs(config); // Hangfire Background Jobs
 
         services.AddTransient<CustomInitializerIdentity>();
+
+        // TokenService precisa do UserManager do tenant correto + TenantCacheService para Issuer/Audience dinâmico
+        services.AddScoped<ITokenService>(provider =>
+        {
+            var httpContextAccessor = provider.GetRequiredService<IHttpContextAccessor>();
+            var tenantId = GetTenantId(httpContextAccessor);
+
+            var userManager = (tenantId.HasValue && tenantId != Guid.Empty)
+                ? GetUserManager(provider, tenantId.Value)
+                : provider.GetRequiredService<UserManager<ContextUser>>();
+
+            return new TokenService(
+                provider.GetRequiredService<IOptions<JwtConfiguration>>(),
+                userManager,
+                provider.GetRequiredService<ITenantCacheService>(),
+                provider.GetRequiredService<IConfiguration>());
+        });
 
         services.AddScoped<IIdentityService>(provider =>
         {
@@ -69,10 +96,11 @@ public static class DependencyInjection
                 ? GetRoleManager(provider, tenantId.Value)
                 : provider.GetRequiredService<RoleManager<ContextRole>>();
 
-            return new DatabaseInitializer(userManager, roleManager, provider.GetRequiredService<IConfiguration>());
-        });
+            var configuration = provider.GetRequiredService<IConfiguration>();
+            var tenantContext = provider.GetRequiredService<ITenantContext>();
 
-        services.AddScoped<ITokenService, TokenService>();
+            return new DatabaseInitializer(userManager, roleManager, configuration, tenantContext, httpContextAccessor);
+        });
 
         AdicionarJwt(services, jwtConfigration);
 
@@ -95,23 +123,109 @@ public static class DependencyInjection
                 ValidateIssuer = true,
                 ValidateAudience = true,
                 ValidIssuer = jwtConfiguration.Issuer,
-                ValidAudience = jwtConfiguration.Audience,
+                // ValidAudience é setado dinamicamente no OnMessageReceived baseado no TenantID
                 ClockSkew = TimeSpan.Zero
             };
 
             x.Events = new JwtBearerEvents
             {
-                OnMessageReceived = context =>
+                OnMessageReceived = async context =>
                 {
-                    var key = new byte[0];
-                    var tenantId = context.Request.Headers["X-Tenant-ID"].ToString();
-                    if (!string.IsNullOrEmpty(tenantId))
-                        key = Encoding.ASCII.GetBytes($"{tenantId}_{jwtConfiguration.Secret}");
+                    // Lê o token do cookie se não estiver no header Authorization
+                    if (string.IsNullOrEmpty(context.Token))
+                    {
+                        context.Token = context.Request.Cookies["auth_token"];
+                    }
+
+                    // SignalR: lê token do query string para conexões WebSocket
+                    if (string.IsNullOrEmpty(context.Token))
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        var path = context.HttpContext.Request.Path;
+                        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                        {
+                            context.Token = accessToken;
+                        }
+                    }
+
+                    var tenantIdHeader = context.Request.Headers["X-Tenant-ID"].ToString();
+
+                    // SignalR WebSocket: browser não envia headers customizados no upgrade,
+                    // então lê o X-Tenant-ID do query string (fallback)
+                    if (string.IsNullOrEmpty(tenantIdHeader))
+                    {
+                        var path = context.HttpContext.Request.Path;
+                        if (path.StartsWithSegments("/hubs"))
+                        {
+                            tenantIdHeader = context.Request.Query["tenant_id"].ToString();
+
+                            // Propaga para o header para que o Hub e middleware consigam ler
+                            if (!string.IsNullOrEmpty(tenantIdHeader))
+                                context.Request.Headers["X-Tenant-ID"] = tenantIdHeader;
+                        }
+                    }
+
+                    // Define a chave de assinatura baseada no TenantID
+                    byte[] key;
+                    if (!string.IsNullOrEmpty(tenantIdHeader))
+                        key = Encoding.ASCII.GetBytes($"{tenantIdHeader}_{jwtConfiguration.Secret}");
                     else
-                        key = Encoding.ASCII.GetBytes($"{Guid.Empty.ToString()}_{jwtConfiguration.Secret}");
+                        key = Encoding.ASCII.GetBytes($"{Guid.Empty}_{jwtConfiguration.Secret}");
 
                     context.Options.TokenValidationParameters.IssuerSigningKey = new SymmetricSecurityKey(key);
-                    return Task.CompletedTask;
+
+                    // Define Issuer/Audience dinâmico baseado no TenantID
+                    // Em Development: Issuer vem do appsettings, Audience é dinâmico
+                    // Em Production: Issuer e Audience são dinâmicos (vêm do cache/CorsSettings)
+                    var isDevelopment = string.Equals(
+                        Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+                        "Development",
+                        StringComparison.OrdinalIgnoreCase);
+
+                    if (!string.IsNullOrEmpty(tenantIdHeader) && Guid.TryParse(tenantIdHeader, out var tenantId) && tenantId != Guid.Empty)
+                    {
+                        // Tenant: busca URL do tenant no cache
+                        var tenantCacheService = context.HttpContext.RequestServices.GetService<ITenantCacheService>();
+                        if (tenantCacheService != null)
+                        {
+                            var tenantUrl = await tenantCacheService.GetTenantUrlByIdAsync(tenantId, context.HttpContext.RequestAborted);
+                            if (!string.IsNullOrWhiteSpace(tenantUrl))
+                            {
+                                var normalizedUrl = NormalizeUrl(tenantUrl);
+                                context.Options.TokenValidationParameters.ValidAudience = normalizedUrl;
+
+                                // Em produção, Issuer também é dinâmico
+                                if (!isDevelopment)
+                                {
+                                    context.Options.TokenValidationParameters.ValidIssuer = normalizedUrl;
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Core: usa primeiro URL do CorsSettings:AllowedOrigins
+                        var configuration = context.HttpContext.RequestServices.GetService<IConfiguration>();
+                        if (configuration != null)
+                        {
+                            var allowedOrigins = configuration["CorsSettings:AllowedOrigins"];
+                            if (!string.IsNullOrWhiteSpace(allowedOrigins))
+                            {
+                                var firstOrigin = allowedOrigins.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim();
+                                if (!string.IsNullOrWhiteSpace(firstOrigin))
+                                {
+                                    var normalizedUrl = NormalizeUrl(firstOrigin);
+                                    context.Options.TokenValidationParameters.ValidAudience = normalizedUrl;
+
+                                    // Em produção, Issuer também é dinâmico
+                                    if (!isDevelopment)
+                                    {
+                                        context.Options.TokenValidationParameters.ValidIssuer = normalizedUrl;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             };
         });
@@ -139,9 +253,9 @@ public static class DependencyInjection
 
             options.AddPolicy("AdminAccess", policy => policy.RequireRole(Roles.Admin));
             options.AddPolicy("UserAccess", policy => policy.RequireRole(Roles.User));
+            options.AddPolicy("TIAccess", policy => policy.RequireRole(Roles.TI));
         });
     }
-
     public static IServiceCollection AdicionarSwagger(this IServiceCollection services, IConfiguration configuration, string version)
     {
         services.AddSwaggerGen(delegate (SwaggerGenOptions c)
@@ -222,5 +336,27 @@ public static class DependencyInjection
     {
         var customInitializer = provider.GetRequiredService<CustomInitializerIdentity>();
         return customInitializer.GetRoleManagerForTenant(tenantId);
+    }
+
+    /// <summary>
+    /// Normaliza URL para usar como Issuer/Audience do JWT.
+    /// Adiciona https:// se não tiver protocolo.
+    /// </summary>
+    private static string NormalizeUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return url;
+
+        url = url.Trim();
+
+        // Se já tem protocolo, retorna como está
+        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return url.TrimEnd('/');
+        }
+
+        // Adiciona https:// por padrão
+        return $"https://{url}".TrimEnd('/');
     }
 }

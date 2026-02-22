@@ -14,5 +14,5 @@ public class CreateUserCommand
     public List<string?> Roles { get; set; }
     public List<string?> Policies { get; set; }
     public string? ProfileImageUrl { get; set; }
-
+    public bool BypassIp { get; set; }
 }

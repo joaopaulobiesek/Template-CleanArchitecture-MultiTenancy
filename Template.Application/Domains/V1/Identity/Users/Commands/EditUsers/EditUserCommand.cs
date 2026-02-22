@@ -3,15 +3,16 @@ using static Template.Domain.Constants.Policies;
 
 namespace Template.Application.Domains.V1.Identity.Users.Commands.EditUsers;
 
-[Authorize(Roles = Domain.Constants.Roles.Admin)]
+[Authorize(Roles = $"{Domain.Constants.Roles.Admin},{Domain.Constants.Roles.TI}")]
 [Authorize(Policy = $"{CanEdit},{CanManageSettings},{CanManageUsers},{CanAssignPolicies},{CanAssignRoles}", PolicyRequirementType = RequirementType.All)]
 public class EditUserCommand
 {
-    public Guid UserId { get; set; }
+    public Guid Id { get; set; }
     public string? FullName { get; set; }
     public string? Email { get; set; }
     public string? Password { get; set; }
     public List<string?> Roles { get; set; }
     public List<string?> Policies { get; set; }
     public string? ProfileImageUrl { get; set; }
+    public bool BypassIp { get; set; }
 }

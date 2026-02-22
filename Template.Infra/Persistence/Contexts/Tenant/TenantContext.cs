@@ -1,13 +1,18 @@
-﻿using Template.Domain.Entity;
-using Template.Domain.Entity.Tenant;
+﻿using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Template.Domain.Entity;
 
 namespace Template.Infra.Persistence.Contexts.Tenant
 {
     public class TenantContext : BaseContext, ITenantContext
     {
-        public TenantContext(DbContextOptions<TenantContext> options) : base(options) { }
 
-        public DbSet<Client> Clients { get; set; }
+        private string _connectionString;
+
+        public TenantContext(DbContextOptions<TenantContext> options) : base(options)
+        {
+        }
+
+        public new DbSet<T> Set<T>() where T : class => base.Set<T>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -29,6 +34,28 @@ namespace Template.Infra.Persistence.Contexts.Tenant
                     modelBuilder.ApplyConfiguration((dynamic)instance);
                 }
             }
+        }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            if (!string.IsNullOrEmpty(_connectionString))
+            {
+                optionsBuilder.UseSqlServer(_connectionString, sqlServerOptions =>
+                {
+                    sqlServerOptions.CommandTimeout(360); // 6 minutos - igual ao BFS
+                });
+            }
+        }
+
+        public void SetConnectionString(string connectionString)
+        {
+            _connectionString = connectionString;
+            Database.SetConnectionString(connectionString);
+        }
+
+        public string GetCurrentConnectionString()
+        {
+            return _connectionString;
         }
 
         public async Task ApplyMigrations()

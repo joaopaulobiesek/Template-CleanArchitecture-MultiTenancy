@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore.Migrations;
+using System.Runtime.InteropServices;
 using Template.Infra.Persistence.Contexts.Core;
 using Template.Infra.Persistence.Contexts.Tenant;
 
@@ -8,9 +9,13 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddContext(this IServiceCollection services, IConfiguration config)
     {
-        var connectionString = config.GetConnectionString(nameof(TenantContext));
+        bool isMac = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+        string connectionString_TempMigrations = isMac ? "TempMigrations_MAC" : "TempMigrations";
+        string connectionString_CoreContext = isMac ? "CoreContext_MAC" : "CoreContext";
 
-        services.AddDbContext<TenantContext>(options
+        var connectionString = config.GetConnectionString(connectionString_CoreContext);
+
+        services.AddDbContext<CoreContext>(options
             => options.UseSqlServer(connectionString, sqlServerOptions =>
             {
                 sqlServerOptions.MigrationsHistoryTable(
@@ -20,21 +25,24 @@ public static class DependencyInjection
             })
         );
 
-        services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
+        services.AddScoped<ICoreContext>(sp => sp.GetRequiredService<CoreContext>());
 
-        services.AddScoped<ITenantDapperConnection, TenantDapper>();
+        services.AddScoped<ICoreDapperConnection, CoreDapper>();
 
         if (Environment.GetCommandLineArgs().Any(arg => arg.Contains("ef", StringComparison.OrdinalIgnoreCase)))
-            services.AddDbContext<CoreContext>(options => options.UseSqlServer(config.GetConnectionString("TempMigrations")));
+            services.AddDbContext<TenantContext>(options => options.UseSqlServer(
+                config.GetConnectionString(connectionString_TempMigrations),
+                sqlServerOptions => sqlServerOptions.CommandTimeout(360)
+            ));
 
-        services.AddScoped<ICoreContext>(provider =>
+        services.AddScoped<ITenantContext>(provider =>
         {
-            var optionsBuilder = new DbContextOptionsBuilder<CoreContext>();
-            var context = new CoreContext(optionsBuilder.Options);
+            var optionsBuilder = new DbContextOptionsBuilder<TenantContext>();
+            var context = new TenantContext(optionsBuilder.Options);
             return context;
         });
 
-        services.AddScoped<ICoreDapperConnection, CoreDapper>();
+        services.AddScoped<ITenantDapperConnection, TenantDapper>();
 
         services
             .AddDefaultIdentity<ContextUser>(o =>
@@ -47,7 +55,7 @@ public static class DependencyInjection
             })
             .AddRoles<ContextRole>()
             .AddErrorDescriber<IdentityPortugueseMessages>()
-            .AddEntityFrameworkStores<TenantContext>();
+            .AddEntityFrameworkStores<CoreContext>();
 
         return services;
     }

@@ -6,7 +6,7 @@ using Template.Domain.Constants;
 
 namespace Template.Application.Domains.Core.V1.Clients.Commands.DeactivateClient;
 
-[Authorize(Roles = Roles.Admin)]
+[Authorize(Roles = $"{Roles.Admin},{Roles.TI}")]
 [Authorize(Policy = Policies.CanDelete)]
 public class DeactivateClientCommand
 {

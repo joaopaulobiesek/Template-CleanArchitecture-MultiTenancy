@@ -7,19 +7,24 @@ using static Template.Domain.Constants.Policies;
 
 namespace Template.Application.Domains.V1.Identity.Users.Commands.DeleteUsers;
 
-[Authorize(Roles = Roles.Admin)]
+[Authorize(Roles = $"{Roles.Admin},{Roles.TI}")]
 [Authorize(Policy = $"{CanPurge},{CanManageSettings},{CanManageUsers},{CanAssignPolicies}", PolicyRequirementType = RequirementType.All)]
-public class DeleteUserCommandHandler : HandlerBase<Guid, string>
+public class DeleteUserCommand
+{
+    public Guid Id{ get; set; }
+}
+
+public class DeleteUserCommandHandler : HandlerBase<DeleteUserCommand, string>
 {
     private readonly IIdentityService _identity;
 
-    public DeleteUserCommandHandler(HandlerDependencies<Guid, string> dependencies) : base(dependencies)
+    public DeleteUserCommandHandler(HandlerDependencies<DeleteUserCommand, string> dependencies) : base(dependencies)
     {
         _identity = dependencies.IdentityService;
     }
 
-    protected override async Task<ApiResponse<string>> RunCore(Guid request, CancellationToken cancellationToken, object? additionalData = null)
+    protected override async Task<ApiResponse<string>> RunCore(DeleteUserCommand request, CancellationToken cancellationToken, object? additionalData = null)
     {
-        return await _identity.DeleteUserAsync(request.ToString());
+        return await _identity.DeleteUserAsync(request.Id.ToString());
     }
 }

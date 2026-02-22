@@ -10,15 +10,10 @@ using static Template.Domain.Constants.Policies;
 
 namespace Template.Application.Domains.Core.V1.Clients.Queries.GetAll;
 
-[Authorize(Roles = $"{Roles.Admin},{Roles.User}")]
+[Authorize(Roles = $"{Roles.Admin},{Roles.TI},{Roles.User}")]
 [Authorize(Policy = $"{CanList},{CanView}")]
-public class GetAllQuery
+public class GetAllQuery : BasePaginatedQuery
 {
-    public int PageNumber { get; set; }
-    public int PageSize { get; set; }
-    public int AscDesc { get; set; }
-    public string? ColumnName { get; set; }
-    public string? SearchText { get; set; }
 }
 
 public class GetAllQueryHandler : HandlerBase<GetAllQuery, IEnumerable<ClientVM>>
@@ -32,7 +27,14 @@ public class GetAllQueryHandler : HandlerBase<GetAllQuery, IEnumerable<ClientVM>
 
     protected override async Task<ApiResponse<IEnumerable<ClientVM>>> RunCore(GetAllQuery request, CancellationToken cancellationToken, object? additionalData = null)
     {
-        var query = _repository.SearchIQueryable(request.SearchText!);
+        var query = _repository.SearchIQueryable(request.Src!, request.GetCustomFilterDictionary());
+
+        // Por padrão filtra apenas clients do usuário (segurança)
+        // Só Admin e TI veem todos os clients
+        if (!_user.HasRole(Roles.Admin) && !_user.HasRole(Roles.TI))
+        {
+            query = query.Where(x => x.UserId == _user.Id);
+        }
 
         query = request.AscDesc == -1
             ? query.OrderByDescending(BuscarOrdemPropriedade(request.ColumnName))
@@ -40,7 +42,7 @@ public class GetAllQueryHandler : HandlerBase<GetAllQuery, IEnumerable<ClientVM>
 
         var list = await PaginatedList<Client>.CreateAsync(query, request.PageNumber, request.PageSize, cancellationToken);
 
-        var newList = list.Data?.Select(x => new ClientVM(x.Id, x.FullName, x.DocumentNumber, x.Phone, x.ZipCode)).ToList();
+        var newList = list.Data?.Select(x => new ClientVM(x.Id, x.FullName, x.DocumentNumber, x.Phone, x.Paid, x.Active)).ToList();
 
         var result = new PaginatedList<ClientVM>(
                 newList,

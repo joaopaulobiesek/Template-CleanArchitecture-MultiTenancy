@@ -5,10 +5,13 @@ using Template.Application.Common.Models;
 using Template.Application.Domains.V1.Identity.Users.Commands.CreateUsers;
 using Template.Application.Domains.V1.Identity.Users.Commands.EditUsers;
 using Template.Application.Domains.V1.Identity.Users.Queries.GetAll;
+using Template.Application.Domains.V1.Identity.Users.Queries.GetAllSimple;
+using Template.Application.Domains.V1.Identity.Users.Queries.GetById;
 using Template.Application.Domains.V1.Identity.Users.Queries.GetPolices;
 using Template.Application.Domains.V1.Identity.Users.Queries.GetRoles;
 using Template.Application.Domains.V1.ViewModels.Users;
 using Template.Application.ViewModels.Shared;
+using Template.Application.Domains.V1.Identity.Users.Commands.DeleteUsers;
 
 namespace Template.Api.Controllers.V1.Identity.Users;
 
@@ -17,70 +20,118 @@ namespace Template.Api.Controllers.V1.Identity.Users;
 public class UsersController : BaseController
 {
     /// <summary>
-    /// Responsável por criar novos usuários no sistema.
+    /// Responsável por criar um novo usuário no sistema.
     /// </summary>
-    /// <param name="handler"></param>
-    /// <param name="command">Forneça as informações para criar o usuário.</param>
-    /// <returns></returns>
+    /// <remarks>
+    /// Este endpoint permite a criação de um novo usuário com suas respectivas permissões e funções.
+    /// 
+    /// **Regras de negócio:**
+    /// - O usuário deve possuir um e-mail e uma senha válidos.
+    /// - As funções e permissões devem ser definidas no momento da criação.
+    /// </remarks>
+    /// <param name="handler">Handler responsável pelo processamento da criação do usuário.</param>
+    /// <param name="command">Os parâmetros necessários para criar o usuário.</param>
+    /// <param name="cancellationToken">Token de cancelamento da requisição.</param>
+    /// <returns>Os detalhes do usuário criado.</returns>
+    /// <response code="200">Usuário criado com sucesso.</response>
+    /// <response code="400">Parâmetros inválidos.</response>
+    /// <response code="401">O usuário não está autenticado para acessar este recurso.</response>
+    /// <response code="403">O usuário não tem permissão para acessar este recurso.</response>
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SuccessResponse<User>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ErrorResponse<User>))]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ErrorResponse<string>))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ErrorResponse<string>))]
     public async Task<IActionResult> CreateUserAsync(
         [FromServices] IHandlerBase<CreateUserCommand, User> handler,
         [FromBody] CreateUserCommand command,
         CancellationToken cancellationToken)
         => HandleResponse(await handler.Execute(command, cancellationToken));
 
-
     /// <summary>
-    /// Obtém a lista completa de políticas de acesso do sistema para exibição e configuração de permissões.
+    /// Obtém a lista de políticas de acesso do sistema.
     /// </summary>
-    /// <param name="handler">Handler que executa a consulta para obter as políticas.</param>
-    /// <param name="cancellationToken">Token de cancelamento para interromper a operação, se necessário.</param>
-    /// <returns>Retorna uma lista de objetos KeyValuePairVM, contendo as políticas de acesso.</returns>
+    /// <remarks>
+    /// Este endpoint retorna a lista de políticas disponíveis para configuração de permissões.
+    /// </remarks>
+    /// <param name="handler">Handler responsável pela consulta das políticas.</param>
+    /// <param name="cancellationToken">Token de cancelamento da requisição.</param>
+    /// <returns>Lista de políticas disponíveis.</returns>
+    /// <response code="200">Lista de políticas obtida com sucesso.</response>
+    /// <response code="401">O usuário não está autenticado para acessar este recurso.</response>
+    /// <response code="403">O usuário não tem permissão para acessar este recurso.</response>
     [HttpGet("Polices")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SuccessResponse<IEnumerable<KeyValuePairVM>>))]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ErrorResponse<string>))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ErrorResponse<string>))]
     public async Task<IActionResult> PolicesAsync(
-            [FromServices] IHandlerBase<GetPolicesQuery, IEnumerable<KeyValuePairVM>> handler,
-            CancellationToken cancellationToken)
-            => HandleResponse(await handler.Execute(new GetPolicesQuery(), cancellationToken));
+        [FromServices] IHandlerBase<GetPolicesQuery, IEnumerable<KeyValuePairVM>> handler,
+        CancellationToken cancellationToken)
+        => HandleResponse(await handler.Execute(new GetPolicesQuery(), cancellationToken));
 
     /// <summary>
-    /// Obtém a lista completa de funções disponíveis no sistema para definição de permissões e acesso.
+    /// Obtém a lista de funções disponíveis no sistema.
     /// </summary>
-    /// <param name="handler">Handler que executa a consulta para obter as roles.</param>
-    /// <param name="cancellationToken">Token de cancelamento para interromper a operação, se necessário.</param>
-    /// <returns>Retorna uma lista de objetos KeyValuePairVM, contendo as funções disponíveis no sistema.</returns>
+    /// <remarks>
+    /// Este endpoint retorna todas as funções disponíveis para atribuição de permissões.
+    /// </remarks>
+    /// <param name="handler">Handler responsável pela consulta das funções.</param>
+    /// <param name="cancellationToken">Token de cancelamento da requisição.</param>
+    /// <returns>Lista de funções disponíveis.</returns>
+    /// <response code="200">Lista de funções obtida com sucesso.</response>
+    /// <response code="401">O usuário não está autenticado para acessar este recurso.</response>
+    /// <response code="403">O usuário não tem permissão para acessar este recurso.</response>
     [HttpGet("Roles")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SuccessResponse<IEnumerable<KeyValuePairVM>>))]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ErrorResponse<string>))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ErrorResponse<string>))]
     public async Task<IActionResult> RolesAsync(
-            [FromServices] IHandlerBase<GetRolesQuery, IEnumerable<KeyValuePairVM>> handler,
-            CancellationToken cancellationToken)
-            => HandleResponse(await handler.Execute(new GetRolesQuery(), cancellationToken));
+        [FromServices] IHandlerBase<GetRolesQuery, IEnumerable<KeyValuePairVM>> handler,
+        CancellationToken cancellationToken)
+        => HandleResponse(await handler.Execute(new GetRolesQuery(), cancellationToken));
 
     /// <summary>
-    /// Responsável por editar usuário no sistema.
+    /// Atualiza as informações de um usuário.
     /// </summary>
-    /// <param name="handler"></param>
-    /// <param name="command">Forneça as informações para editar o usuário.</param>
-    /// <returns></returns>
+    /// <remarks>
+    /// Este endpoint permite a edição dos detalhes do usuário, incluindo permissões e funções.
+    /// </remarks>
+    /// <param name="handler">Handler responsável pelo processamento da edição do usuário.</param>
+    /// <param name="command">Os parâmetros necessários para editar o usuário.</param>
+    /// <param name="cancellationToken">Token de cancelamento da requisição.</param>
+    /// <returns>Os detalhes do usuário atualizado.</returns>
+    /// <response code="200">Usuário atualizado com sucesso.</response>
+    /// <response code="400">Parâmetros inválidos.</response>
+    /// <response code="401">O usuário não está autenticado para acessar este recurso.</response>
+    /// <response code="403">O usuário não tem permissão para acessar este recurso.</response>
     [HttpPut]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SuccessResponse<User>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ErrorResponse<User>))]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ErrorResponse<string>))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ErrorResponse<string>))]
     public async Task<IActionResult> EditUserAsync(
         [FromServices] IHandlerBase<EditUserCommand, User> handler,
-        [FromBody] EditUserCommand command, CancellationToken cancellationToken)
+        [FromBody] EditUserCommand command,
+        CancellationToken cancellationToken)
         => HandleResponse(await handler.Execute(command, cancellationToken));
 
     /// <summary>
-    /// Responsável por listar usuários paginados, ordenados e filtrados por email, CPF ou nome.
+    /// Lista usuários paginados e filtrados.
     /// </summary>
-    /// <param name="handler"></param>
-    /// <param name="query">O objeto de consulta contendo os parâmetros de paginação, ordenação e filtro.</param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
+    /// <remarks>
+    /// Este endpoint retorna uma lista paginada de usuários, permitindo filtro por e-mail, CPF ou nome.
+    /// </remarks>
+    /// <param name="handler">Handler responsável pelo processamento da consulta.</param>
+    /// <param name="query">Os parâmetros necessários para a listagem de usuários.</param>
+    /// <param name="cancellationToken">Token de cancelamento da requisição.</param>
+    /// <returns>Lista paginada de usuários.</returns>
+    /// <response code="200">Lista de usuários obtida com sucesso.</response>
+    /// <response code="401">O usuário não está autenticado para acessar este recurso.</response>
+    /// <response code="403">O usuário não tem permissão para acessar este recurso.</response>
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PaginatedList<UserVm>))]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ErrorResponse<string>))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ErrorResponse<string>))]
     public async Task<IActionResult> UsuariosAsync(
         [FromServices] IHandlerBase<GetAllQuery, IEnumerable<UserVm>> handler,
         [FromQuery] GetAllQuery query,
@@ -88,17 +139,70 @@ public class UsersController : BaseController
         => HandleResponse(await handler.Execute(query, cancellationToken));
 
     /// <summary>
-    /// Responsável por deletar usuário pelo Id.
+    /// Lista todos os usuários de forma simplificada (Id, Nome, Email) sem paginação.
     /// </summary>
-    /// <param name="handler"></param>
-    /// <param name="userId"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
+    /// <param name="handler">Handler responsável pela consulta.</param>
+    /// <param name="cancellationToken">Token de cancelamento da requisição.</param>
+    /// <returns>Lista simplificada de usuários.</returns>
+    /// <response code="200">Lista obtida com sucesso.</response>
+    /// <response code="401">O usuário não está autenticado para acessar este recurso.</response>
+    /// <response code="403">O usuário não tem permissão para acessar este recurso.</response>
+    [HttpGet("Simple")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SuccessResponse<IEnumerable<UserSimpleVM>>))]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ErrorResponse<string>))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ErrorResponse<string>))]
+    public async Task<IActionResult> GetAllSimpleAsync(
+        [FromServices] IHandlerBase<GetAllSimpleUsersQuery, IEnumerable<UserSimpleVM>> handler,
+        CancellationToken cancellationToken)
+        => HandleResponse(await handler.Execute(new GetAllSimpleUsersQuery(), cancellationToken));
+
+    /// <summary>
+    /// Obtém um usuário pelo ID.
+    /// </summary>
+    /// <remarks>
+    /// Este endpoint retorna os detalhes de um usuário específico com base em seu identificador único.
+    /// </remarks>
+    /// <param name="handler">Handler responsável pelo processamento da consulta.</param>
+    /// <param name="userId">O identificador do usuário.</param>
+    /// <param name="cancellationToken">Token de cancelamento da requisição.</param>
+    /// <returns>Os detalhes do usuário.</returns>
+    /// <response code="200">Usuário encontrado com sucesso.</response>
+    /// <response code="404">Usuário não encontrado.</response>
+    /// <response code="401">O usuário não está autenticado para acessar este recurso.</response>
+    /// <response code="403">O usuário não tem permissão para acessar este recurso.</response>
+    [HttpGet("{userId}")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SuccessResponse<UserVm>))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ErrorResponse<UserVm>))]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ErrorResponse<string>))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ErrorResponse<string>))]
+    public async Task<IActionResult> GetUserByIdAsync(
+        [FromServices] IHandlerBase<GetByIdQuery, UserVm> handler,
+        string userId,
+        CancellationToken cancellationToken)
+        => HandleResponse(await handler.Execute(new GetByIdQuery { UserId = userId }, cancellationToken));
+
+    /// <summary>
+    /// Deleta um usuário pelo ID.
+    /// </summary>
+    /// <remarks>
+    /// Este endpoint permite a exclusão de um usuário com base em seu identificador único.
+    /// </remarks>
+    /// <param name="handler">Handler responsável pelo processamento da exclusão do usuário.</param>
+    /// <param name="userId">O identificador do usuário a ser deletado.</param>
+    /// <param name="cancellationToken">Token de cancelamento da requisição.</param>
+    /// <returns>Confirmação da exclusão do usuário.</returns>
+    /// <response code="200">Usuário deletado com sucesso.</response>
+    /// <response code="400">Parâmetros inválidos.</response>
+    /// <response code="401">O usuário não está autenticado para acessar este recurso.</response>
+    /// <response code="403">O usuário não tem permissão para acessar este recurso.</response>
     [HttpDelete("{userId:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SuccessResponse<string>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ErrorResponse<string>))]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ErrorResponse<string>))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ErrorResponse<string>))]
     public async Task<IActionResult> DeleteUserAsync(
-        [FromServices] IHandlerBase<Guid, string> handler,
-        Guid userId, CancellationToken cancellationToken)
-        => HandleResponse(await handler.Execute(userId, cancellationToken));
+        [FromServices] IHandlerBase<DeleteUserCommand, string> handler,
+        Guid userId,
+        CancellationToken cancellationToken)
+        => HandleResponse(await handler.Execute(new DeleteUserCommand { Id = userId }, cancellationToken));
 }

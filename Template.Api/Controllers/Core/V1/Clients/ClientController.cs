@@ -4,8 +4,11 @@ using Template.Application.Common.Behaviours;
 using Template.Application.Common.Models;
 using Template.Application.Domains.Core.V1.Clients.Commands.CreateClient;
 using Template.Application.Domains.Core.V1.Clients.Commands.DeactivateClient;
+using Template.Application.Domains.Core.V1.Clients.Commands.ReactivateClient;
 using Template.Application.Domains.Core.V1.Clients.Commands.UpdateClient;
 using Template.Application.Domains.Core.V1.Clients.Queries.GetAll;
+using Template.Application.Domains.Core.V1.Clients.Queries.GetById;
+using Template.Application.Domains.Core.V1.Clients.Queries.GetSimple;
 using Template.Application.Domains.Core.V1.ViewModels;
 
 namespace Template.Api.Controllers.Core.V1.Clients;
@@ -61,6 +64,31 @@ public class ClientController : BaseController
         => HandleResponse(await handler.Execute(query, cancellationToken));
 
     /// <summary>
+    /// Retorna todos os dados de um cliente por ID, incluindo configurações.
+    /// </summary>
+    [HttpGet("GetById")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SuccessResponse<ClientDetailVM>))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ErrorResponse<ClientDetailVM>))]
+    public async Task<IActionResult> GetByIdAsync(
+        [FromServices] IHandlerBase<GetByIdQuery, ClientDetailVM> handler,
+        [FromQuery] GetByIdQuery query,
+        CancellationToken cancellationToken)
+        => HandleResponse(await handler.Execute(query, cancellationToken));
+
+    /// <summary>
+    /// Lista clientes de forma simplificada para selects/dropdowns.
+    /// Retorna Id e DisplayName (FullName - DocumentNumber).
+    /// Se src for null, retorna todos. Busca por FullName, DocumentNumber e Email.
+    /// </summary>
+    [HttpGet("Simple")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SuccessResponse<IEnumerable<ClientSimpleVM>>))]
+    public async Task<IActionResult> GetSimpleAsync(
+        [FromServices] IHandlerBase<GetClientsSimpleQuery, IEnumerable<ClientSimpleVM>> handler,
+        [FromQuery] GetClientsSimpleQuery query,
+        CancellationToken cancellationToken)
+        => HandleResponse(await handler.Execute(query, cancellationToken));
+
+    /// <summary>
     /// Responsável por desativar um cliente.
     /// </summary>
     /// <param name="handler"></param>
@@ -73,6 +101,17 @@ public class ClientController : BaseController
     public async Task<IActionResult> DeactivateClientAsync(
         [FromServices] IHandlerBase<DeactivateClientCommand, string> handler,
         [FromBody] DeactivateClientCommand command, CancellationToken cancellationToken)
+        => HandleResponse(await handler.Execute(command, cancellationToken));
+
+    /// <summary>
+    /// Responsável por reativar um cliente.
+    /// </summary>
+    [HttpPatch("Reactivate")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SuccessResponse<string>))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ErrorResponse<string>))]
+    public async Task<IActionResult> ReactivateClientAsync(
+        [FromServices] IHandlerBase<ReactivateClientCommand, string> handler,
+        [FromBody] ReactivateClientCommand command, CancellationToken cancellationToken)
         => HandleResponse(await handler.Execute(command, cancellationToken));
 
     /// <summary>

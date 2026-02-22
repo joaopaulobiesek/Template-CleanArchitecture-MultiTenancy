@@ -1,16 +1,15 @@
 ﻿using Template.Application.Common.Interfaces.IRepositories.Core.Base;
+using Template.Infra.Persistence.Contexts.Core;
 
 namespace Template.Infra.Persistence.Repositories.Core.Base;
 
 public class Repository<T> : IRepository<T> where T : class
 {
-    private readonly IServiceProvider _serviceProvider;
-    private ICoreContext? Context;
-    protected ICoreContext _context => Context ??= _serviceProvider.GetRequiredService<ICoreContext>();
+    private readonly CoreContext _context;
 
-    public Repository(IServiceProvider serviceProvider)
+    public Repository(CoreContext context)
     {
-        _serviceProvider = serviceProvider;
+        _context = context;
     }
 
     public async Task<T> GetByIdAsync(Guid id, CancellationToken cancellationToken)

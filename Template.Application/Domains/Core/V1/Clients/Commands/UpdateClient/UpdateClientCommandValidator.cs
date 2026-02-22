@@ -16,11 +16,6 @@ public class UpdateClientCommandValidator : AbstractValidator<UpdateClientComman
             .WithMessage("Número de telefone inválido.")
             .MaximumLength(20).WithMessage("O número de telefone pode ter no máximo 20 caracteres.");
 
-        RuleFor(x => x.ZipCode)
-            .Must(zipCode => string.IsNullOrEmpty(zipCode) || zipCode.Length == 8)
-            .WithMessage("O CEP deve ter 8 caracteres, se fornecido.")
-            .MaximumLength(10).WithMessage("O CEP pode ter no máximo 10 caracteres.");
-
         RuleFor(x => x.Email)
             .EmailAddress().WithMessage("E-mail inválido.")
             .MaximumLength(254).WithMessage("O e-mail pode ter no máximo 254 caracteres.")
